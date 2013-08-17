@@ -393,7 +393,7 @@ end
 function casinomodblackjack(ply,_,args)
 MsgAll(ply.PlayingBlackJack)
 	if(ply.PlayingBlackJack != true) then  
-		if(!tonumber(args[1])) then ply.BlackJackBet = 4 else ply.BlackJackBet = math.abs(tonumber(args[1])) end
+		if(!tonumber(args)) then ply.BlackJackBet = 4 else ply.BlackJackBet = math.abs(tonumber(args)) end
 		local CurrentMoney = sql.QueryValue("SELECT player_money FROM munmod_player_info WHERE player_id = '"..ply:SteamID().."'")
 		local HouseMoney = sql.QueryValue("SELECT player_money FROM munmod_player_info WHERE player_id = 'house'")
 		if(tonumber(CurrentMoney) < tonumber(ply.BlackJackBet)) then return end

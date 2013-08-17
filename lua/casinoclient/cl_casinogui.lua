@@ -43,7 +43,6 @@ local function InitD()
 	DLabel:SetPos( 200, 200 )
 	DLabel:SetText( "Hand" )
 	DLabel:SizeToContents()
-	DLabel:SetAutoStretchVertical(true)
 	DLabel:Center()
 	DLabel:SetFont("TargetID")
 	
