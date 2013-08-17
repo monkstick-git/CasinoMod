@@ -41,10 +41,11 @@ local function InitD()
 	
 	DLabel = vgui.Create( "DLabel", D.Frame )
 	DLabel:SetPos( 200, 200 )
-	DLabel:SetText( "Hand" )
+	DLabel:SetText( " " )
 	DLabel:SizeToContents()
 	DLabel:Center()
 	DLabel:SetFont("TargetID")
+	DLabel:SizeToContents()
 	
 	DLabelStatic = vgui.Create( "DLabel", D.Frame )
 	DLabelStatic:SetPos( 10, 25 )
