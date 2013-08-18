@@ -4,7 +4,7 @@ util.AddNetworkString("casinomod_balance")
 util.AddNetworkString("open_blackjack")
 
 -- Configs
-local CasinoPayTimer = 10 -- This is in seconds.  600 = 10 minutes
+local CasinoPayTimer = 120 -- This is in seconds.  600 = 10 minutes
 local RandomEvents = 1800 -- How often a random event happens.  This is in seconds.  1800 = 30 minutes
 local RandomEventAmount = 10 -- When an event is triggered, whats the maximum amount we give them? (math.random(0,RandomEventAmount))
 local ScratchCardOdds = 33 -- The chances of winning something.  This is out of 100 (so 33 means 1/3 of the time the player will win something)
@@ -15,15 +15,15 @@ local HolWinAmount = 3 -- Whats the ratio when you win. (Eg: if it costs 4 to wi
 local HolCost = 4 -- How much Higher or lower costs to play
 local RaffleCost = 10 -- How much it costs to enter into the raffle.
 local ExpRatio = 1.1 -- The Exp levelup ratio.  Eg: 1.1 - if I needed 100 exp to level up and I leveled up, next time I will need 110. if it was 1.2 then I would need 120.  Its a percent.  1.1 = 10%, 1.3 = 30%
-local BlackJackHouseLooseRatio = 10 -- The percent that the House will end up Busting.  Raise to make blackjack easier, lower to make it tougher.
+local BlackJackHouseLooseRatio = 17 -- The percent that the House will end up Busting.  Raise to make blackjack easier, lower to make it tougher.
 -- DO NOT EDIT BELOW THIS
 
 function munmodcreatetable()
 	MunModBetIndex = 0
 	if(!sql.TableExists("munmod_player_info")) then
 		MsgAll("Creating the player info table...")
-		sql.Query("CREATE TABLE munmod_player_info (player_id varchar(255),player_money int,player_xp int,player_lvl varchar(255),player_xp_needed int)")
-		sql.Query("INSERT INTO munmod_player_info (`player_id`, `player_money`, `player_xp`, `player_lvl`, `player_xp_needed`)VALUES ('house', '1000','0','1','100')" )
+		sql.Query("CREATE TABLE munmod_player_info (player_id varchar(255),player_money int,player_xp int,player_lvl varchar(255),player_xp_needed int,player_wins int,player_losses int,player_overallwon int,player_overalllost int,player_lasthere int,player_takenfunds int)")
+		sql.Query("INSERT INTO munmod_player_info (`player_id`, `player_money`, `player_xp`, `player_lvl`, `player_xp_needed`, `player_wins`, `player_losses`, `player_overallwon`, `player_overalllost`, `player_lasthere`, `player_takenfunds`)VALUES ('house', '10000','0','1','100','0','0','0','0','0','1')" )
 			if(sql.TableExists("munmod_player_info")) then
 				MsgAll("Sucesfully made the player info table")
 			else
@@ -56,14 +56,17 @@ function munmodcreatetable()
 
 		local MunModRemovePlayerMoney = sql.Query("UPDATE munmod_player_info SET player_money = "..tostring((CurrentMoney + randomamount)).." WHERE player_id = '"..player.GetAll()[RandomPlayer]:SteamID().."'")
 		local MunModAddHousePlayerMoney = sql.Query("UPDATE munmod_player_info SET player_money = "..tostring((HouseMoney - randomamount)).." WHERE player_id = 'house'")
-		casinomodupdatebalance(ply)
+		casinomodupdatebalance(player.GetAll()[RandomPlayer])
 	end)
 	
 timer.Create("PayPeople",CasinoPayTimer,0,function()
 		for k,v in pairs(player.GetAll()) do
-			local CurrentMoney = sql.QueryValue("SELECT player_money FROM munmod_player_info WHERE player_id = '"..v:SteamID().."'")
-			local CurrentLevel = sql.QueryValue("SELECT player_lvl FROM munmod_player_info WHERE player_id = '"..v:SteamID().."'")
-				if(tonumber(CurrentMoney) < (10 + tonumber(CurrentLevel))) then sql.Query("UPDATE munmod_player_info SET player_money = "..tostring(10 + tonumber(CurrentLevel)).." WHERE player_id = '"..v:SteamID().."'")
+			local CurrentMoney = sql.QueryValue("SELECT player_money FROM munmod_player_info WHERE player_id = '"..v:SteamID().."'") -- Get my money
+			local CurrentLevel = sql.QueryValue("SELECT player_lvl FROM munmod_player_info WHERE player_id = '"..v:SteamID().."'") -- Get the House Money
+				if(tonumber(CurrentMoney) < (10 + tonumber(CurrentLevel))) then  -- If My money is less than (Level + 10 chips)
+				local HouseMoney = sql.QueryValue("SELECT player_money FROM munmod_player_info WHERE player_id = 'house'") -- Get the house money
+				sql.Query("UPDATE munmod_player_info SET player_money = "..tostring((tonumber(HouseMoney + CurrentMoney) )).." WHERE player_id = 'house'") -- Give the house my remaining chips
+				sql.Query("UPDATE munmod_player_info SET player_money = "..tostring((10 + tonumber(CurrentLevel))).." WHERE player_id = '"..v:SteamID().."'") -- Add Chips to my account.  
 					local HouseMoney = sql.QueryValue("SELECT player_money FROM munmod_player_info WHERE player_id = 'house'")
 					local RemoveHouseMoney = sql.Query("UPDATE munmod_player_info SET player_money = "..tostring((tonumber(HouseMoney) - (10 + tonumber(CurrentLevel)))).." WHERE player_id = 'house'")
 					v:PrintMessage( HUD_PRINTTALK,"You have been given "..(10 + tonumber(CurrentLevel)).." chips by the house to fuel your gambling habit.")
@@ -105,11 +108,14 @@ function munmodremovemaintable()
 			end
 	end
 	
+			
+		
+	
 			if(!sql.TableExists("munmod_player_info")) then
 		MsgAll("Creating the munmod_player_info table...")
-		sql.Query("CREATE TABLE munmod_player_info (player_id varchar(255),player_money int,player_xp int,player_lvl varchar(255),player_xp_needed int)")
+		sql.Query("CREATE TABLE munmod_player_info (player_id varchar(255),player_money int,player_xp int,player_lvl varchar(255),player_xp_needed int,player_wins int,player_losses int,player_overallwon int,player_overalllost int,player_lasthere int,player_takenfunds int)")
 		MsgAll("Created table, now trying to insert information into it")
-		sql.Query("INSERT INTO munmod_player_info ('player_id', 'player_money', 'player_xp', 'player_lvl', 'player_xp_needed')VALUES ('house','1000','0','1','100')" )
+		sql.Query("INSERT INTO munmod_player_info (`player_id`, `player_money`, `player_xp`, `player_lvl`, `player_xp_needed`, `player_wins`, `player_losses`, `player_overallwon`, `player_overalllost`, `player_lasthere`, `player_takenfunds`)VALUES ('house', '10000','0','1','100','0','0','0','0','0','1')" )
 		
 			if(sql.TableExists("munmod_player_info")) then
 				MsgAll("Sucesfully made the munmod_player_info table")
@@ -124,7 +130,7 @@ end
 function munsqlplayerspawned(ply)
 	if(!sql.Query("SELECT player_id, player_money FROM munmod_player_info WHERE player_id = '"..ply:SteamID().."'")) then
 		MsgAll("THE PLAYERS NOT IN THE DATABASE, ADDING THEM NOW")
-		sql.Query("INSERT INTO munmod_player_info (`player_id`, `player_money`, `player_xp`, `player_lvl`, `player_xp_needed`)VALUES ('"..ply:SteamID().."', '100','0','1','10')" )
+		sql.Query("INSERT INTO munmod_player_info (`player_id`, `player_money`, `player_xp`, `player_lvl`, `player_xp_needed`, `player_wins`, `player_losses`, `player_overallwon`, `player_overalllost`, `player_lasthere`, `player_takenfunds`)VALUES ('"..ply:SteamID().."', '100','0','1','50','0','0','0','0','"..os.time().."','0')" )
 		local result = sql.QueryValue("SELECT player_money FROM munmod_player_info WHERE player_id = '"..ply:SteamID().."'")
 			timer.Simple(2,function()
 			PrintMessage( HUD_PRINTTALK,"[Muneris Casino Mod APLHA 0.1] - Welcome "..ply:Nick()..". You have received ❉"..result.." Chips as a gesture of good will!")
@@ -157,6 +163,7 @@ function casinomodmessages(ply,msg,team)
 	local Message = string.Explode(" ",msg)
 		 if(Message[1]=="/give" or Message[1]=="!give") then 
 			casinomodgive(ply,_,Message)
+			return ""
 		 end
 		 
 	if(Message[1]=="/balance" or Message[1]=="!balance") then
@@ -165,8 +172,8 @@ function casinomodmessages(ply,msg,team)
 	end	
 	
 	if(Message[1]=="/gambling") then
-	MsgAll("Recieved the command!")
 	casinomodgui(ply)
+	casinomodupdatebalance(ply)
 	return ""
 	end
 	
@@ -338,6 +345,13 @@ function casinomodmessages(ply,msg,team)
 	
 	if(Message[1]=="/exp") then
 		casinomodshowexp(ply)
+		local CurrentWins = sql.QueryValue("SELECT player_wins FROM munmod_player_info WHERE player_id = '"..ply:SteamID().."'")
+		local CurrentLose = sql.QueryValue("SELECT player_losses FROM munmod_player_info WHERE player_id = '"..ply:SteamID().."'")
+		
+		local CurrentWinnings = sql.QueryValue("SELECT player_overallwon FROM munmod_player_info WHERE player_id = '"..ply:SteamID().."'")
+		local Currentlosses = sql.QueryValue("SELECT player_overalllost FROM munmod_player_info WHERE player_id = '"..ply:SteamID().."'")
+		PrintMessage(HUD_PRINTTALK,"Current Wins stand at: "..CurrentWins.." Current Losses stand at: "..CurrentLose)
+		PrintMessage(HUD_PRINTTALK,"Current Winnings stand at: "..CurrentWinnings.." | Current Losses stand at: "..Currentlosses)
 		return ""
 	end
 end
@@ -391,48 +405,133 @@ function casinomodblackjack(ply,_,args)
 		if(tonumber(CurrentMoney) < tonumber(ply.BlackJackBet)) then return end
 		local MunModRemovePlayerMoney = sql.Query("UPDATE munmod_player_info SET player_money = "..tostring((CurrentMoney - (ply.BlackJackBet))).." WHERE player_id = '"..ply:SteamID().."'")
 		local MunModAddHousePlayerMoney = sql.Query("UPDATE munmod_player_info SET player_money = "..tostring((HouseMoney + (ply.BlackJackBet))).." WHERE player_id = 'house'")
-		
+		ply.hascharlie = false
 		ply.PlayingBlackJack = true
-		local Hand1 = math.random(11)
-		local Hand2 = math.random(11)
-		if(Hand1 == 11 and Hand2 == 11) then Hand2 = 1 end
-		ply.blackjackhand = (Hand1 + Hand2)
 		
-		ply:PrintMessage( HUD_PRINTTALK,"Hand is "..(Hand1 + Hand2))
+		ply.HouseHand = casinomodrandomcard()
 		
-		netsendhand(ply,(Hand1 + Hand2))
+		ply.Hand1 = casinomodrandomcard(ply)
+		ply.Hand2 = casinomodrandomcard(ply)
+		ply.Hand3 = casinomodrandomcard(ply)
+		ply.Hand4 = casinomodrandomcard(ply)
+		ply.Hand5 = casinomodrandomcard(ply)
+		
+		ply.Hand1String = casinomodDefineCard(ply.Hand1)
+		ply.Hand2String = casinomodDefineCard(ply.Hand2)
+		ply.Hand3String = casinomodDefineCard(ply.Hand3)
+		ply.Hand4String = casinomodDefineCard(ply.Hand4)
+		ply.Hand5String = casinomodDefineCard(ply.Hand5)
+		
+		
+		ply.blackjackhand = (ply.Hand1 + ply.Hand2)
+		
+		ply:PrintMessage( HUD_PRINTTALK,"Hand is "..ply.Hand1String.." - "..ply.Hand2String.." total is: "..(ply.Hand1 +ply.Hand2+ply.Hand3+ply.Hand4+ply.Hand5))
+		
+		netsendhand(ply,(""..ply.Hand1String.." - "..ply.Hand2String.."".." | Total: "..ply.blackjackhand.." - House Has a : "..ply.HouseHand))
 		
 		casinomodupdatebalance(ply)
+		ply.Cards = 2
 		end
+end
+
+function casinomodrandomcard(ply)
+local RandomCard = math.random(1,13)
+	if RandomCard == 1 then if(math.random(2) == 1) then Card = 11 else Card = 1 end
+	elseif RandomCard == 11 then Card = 10
+	elseif RandomCard == 12 then Card = 10 
+	elseif RandomCard == 13 then Card = 10
+	else
+	Card = RandomCard
+	end
+return Card
+end
+
+function casinomodDefineCard(In)
+	if In == 1 then Out = "Ace Low"
+	elseif In == 11 then Out = "Ace High"
+	elseif In == 10 then Out =  table.Random({"Jack","Queen","King"})
+	else
+	Out = In
+	end
+return Out
+end
+
+function casinomodhandlewins(ply,result)
+	if(result == "win") then
+		local CurrentWins = sql.QueryValue("SELECT player_wins FROM munmod_player_info WHERE player_id = '"..ply:SteamID().."'")
+		sql.Query("UPDATE munmod_player_info SET player_wins = "..tostring((CurrentWins + 1)).." WHERE player_id = '"..ply:SteamID().."'")
+	else
+		local CurrentLosses = sql.QueryValue("SELECT player_losses FROM munmod_player_info WHERE player_id = '"..ply:SteamID().."'")
+		sql.Query("UPDATE munmod_player_info SET player_losses = "..tostring((CurrentLosses + 1)).." WHERE player_id = '"..ply:SteamID().."'")
+	end
+end
+
+function casinomodhandlelosses(ply,amount)
+	MsgAll("Recieved a command to fuck with losses.  amount was "..amount)
+	local CurrentLoss = sql.QueryValue("SELECT player_overalllost FROM munmod_player_info WHERE player_id = '"..ply:SteamID().."'")
+	sql.Query("UPDATE munmod_player_info SET player_overalllost = "..tostring((CurrentLoss + amount)).." WHERE player_id = '"..ply:SteamID().."'")
+end
+
+function casinomodhandlewinnings(ply,amount)
+	MsgAll("Recieved a command to fuck with winnings.  amount was "..amount)
+	local Currentwinnings = sql.QueryValue("SELECT player_overallwon FROM munmod_player_info WHERE player_id = '"..ply:SteamID().."'")
+	sql.Query("UPDATE munmod_player_info SET player_overallwon = "..tostring((Currentwinnings + amount)).." WHERE player_id = '"..ply:SteamID().."'")
 end
 
 function casinomodhit(ply)
 if(ply.PlayingBlackJack == true) then
-local RandomCard = math.random(11)
-		ply.blackjackhand = ply.blackjackhand + RandomCard
+ply.Cards = ply.Cards + 1
+		ply.blackjackhand = (ply.Hand1 + ply.Hand2)
+		if(ply.Cards == 3) then ply.blackjackhand = (ply.Hand1 + ply.Hand2 + ply.Hand3) ply.blackjackstring = (""..ply.Hand1String.." - "..ply.Hand2String.." - "..ply.Hand3String.." | Total: "..ply.blackjackhand)
+		elseif(ply.Cards == 4) then ply.blackjackhand = (ply.Hand1 + ply.Hand2 + ply.Hand3 + ply.Hand4) ply.blackjackstring =(""..ply.Hand1String.." - "..ply.Hand2String.." - "..ply.Hand3String.." - "..ply.Hand4String.." | Total: "..ply.blackjackhand)
+		elseif(ply.Cards == 5) then ply.blackjackhand = (ply.Hand1 + ply.Hand2 + ply.Hand3 + ply.Hand4 + ply.Hand5) ply.blackjackstring = (""..ply.Hand1String.." - "..ply.Hand2String.." - "..ply.Hand3String.." - "..ply.Hand4String.." - "..ply.Hand5String.." | Total: "..ply.blackjackhand) ply.hascharlie = true
+		end
 			if(ply.blackjackhand > 21) then
 				ply.PlayingBlackJack = false
-				ply:PrintMessage( HUD_PRINTTALK,"You lose.  Hand was "..ply.blackjackhand)
-				netsendhand(ply,"You lose.  Hand was "..ply.blackjackhand)
+				ply:PrintMessage( HUD_PRINTTALK,"You lose with "..ply.blackjackstring.." | ("..ply.blackjackhand..")")
+				netsendhand(ply,"You lose with "..ply.blackjackstring.." | ("..ply.blackjackhand..")")
 				munmodhandleexp(ply,(tonumber(ply.BlackJackBet) / 2))
 				ply.blackjackhand = 0
+				casinomodhandlewins(ply,"lose")
+				casinomodhandlelosses(ply,ply.BlackJackBet)
 				else
-				ply:PrintMessage( HUD_PRINTTALK,"Hand is "..ply.blackjackhand)
-				netsendhand(ply,ply.blackjackhand)
+				ply:PrintMessage( HUD_PRINTTALK,"Hand: "..ply.blackjackstring.." | ("..ply.blackjackhand..")")
+				netsendhand(ply,ply.blackjackstring)
 			end
 end
 		return ""
 end
 
-function casinomodstand(ply)
+function casinomodstand(ply) 
 if(ply.PlayingBlackJack == true) then
-	local HouseHand = 0
-	local HouseLoose = math.random(100)
-	if HouseLoose < BlackJackHouseLooseRatio then HouseHand = math.random(22,25) else HouseHand = math.random(16,21) end
+	local HouseHand = ply.HouseHand
+	local HouseString = casinomodDefineCard(ply.HouseHand).." - "
+	local HouseLoose = math.random(100)  
+	local A = 0
+	local HouseCardTable = {}
+	while HouseHand < BlackJackHouseLooseRatio do A=A+1 local TempHand = (casinomodrandomcard())  HouseHand = HouseHand+TempHand HouseCardTable[A] = (tostring(casinomodDefineCard(TempHand))) end
+	
+	HouseString = HouseString..table.concat(HouseCardTable," - ").." | ("..HouseHand..")"
+	
+	if (ply.hascharlie == true) then
+		munmodhandleexp(ply,ply.BlackJackBet * 2) netsendhand(ply,("You win with a Charlie!"))
+		local CurrentMoney = sql.QueryValue("SELECT player_money FROM munmod_player_info WHERE player_id = '"..ply:SteamID().."'")
+		local HouseMoney = sql.QueryValue("SELECT player_money FROM munmod_player_info WHERE player_id = 'house'")
+		
+		local MunModRemovePlayerMoney = sql.Query("UPDATE munmod_player_info SET player_money = "..tostring((CurrentMoney + (ply.BlackJackBet * 2))).." WHERE player_id = '"..ply:SteamID().."'")
+		local MunModAddHousePlayerMoney = sql.Query("UPDATE munmod_player_info SET player_money = "..tostring((HouseMoney - (ply.BlackJackBet * 2))).." WHERE player_id = 'house'")
+		PrintMessage( HUD_PRINTTALK,ply:Nick().." Won "..(ply.BlackJackBet * 2).." Chips from the House with a Charlie!!")
+		
+		ply.PlayingBlackJack = false
+		ply.hascharlie = false
+		casinomodhandlewins(ply,"win")
+		casinomodhandlewinnings(ply,ply.BlackJackBet)
+		return
+	end
 	
 	if (HouseHand > 21) then 
-	ply:PrintMessage( HUD_PRINTTALK,"You win, House bust with: "..HouseHand) netsendhand(ply,("You win, House bust with: "..HouseHand))
-		netsendhand(ply,("You win, House bust with: "..HouseHand))
+	ply:PrintMessage( HUD_PRINTTALK,"You win, House bust with: "..HouseString) netsendhand(ply,("You win, House bust with: "..HouseString))
+		netsendhand(ply,("You win, House bust with: "..HouseString))
 		munmodhandleexp(ply,ply.BlackJackBet * 2)
 		local CurrentMoney = sql.QueryValue("SELECT player_money FROM munmod_player_info WHERE player_id = '"..ply:SteamID().."'")
 		local HouseMoney = sql.QueryValue("SELECT player_money FROM munmod_player_info WHERE player_id = 'house'")
@@ -440,17 +539,21 @@ if(ply.PlayingBlackJack == true) then
 		local MunModRemovePlayerMoney = sql.Query("UPDATE munmod_player_info SET player_money = "..tostring((CurrentMoney + (ply.BlackJackBet * 2))).." WHERE player_id = '"..ply:SteamID().."'")
 		local MunModAddHousePlayerMoney = sql.Query("UPDATE munmod_player_info SET player_money = "..tostring((HouseMoney - (ply.BlackJackBet * 2))).." WHERE player_id = 'house'")
 		PrintMessage( HUD_PRINTTALK,ply:Nick().." Won "..(ply.BlackJackBet * 2).." Chips from the House!")
+		casinomodhandlewins(ply,"win")
+		casinomodhandlewinnings(ply,ply.BlackJackBet)
 	else
-	if (HouseHand > ply.blackjackhand) then ply:PrintMessage( HUD_PRINTTALK,"You lose, House hand is: "..HouseHand) munmodhandleexp(ply,ply.BlackJackBet / 2) netsendhand(ply,("You lose, House hand is: "..HouseHand))  end
-	if(HouseHand < ply.blackjackhand) then ply:PrintMessage( HUD_PRINTTALK,"You win, House hand is: "..HouseHand) munmodhandleexp(ply,ply.BlackJackBet * 2) netsendhand(ply,("You win, House hand is: "..HouseHand))
+	if (HouseHand > ply.blackjackhand) then ply:PrintMessage( HUD_PRINTTALK,"You lose, House hand is: "..HouseString) munmodhandleexp(ply,ply.BlackJackBet / 2) netsendhand(ply,("You lose, House hand is: "..HouseString)) casinomodhandlewins(ply,"lose") casinomodhandlelosses(ply,ply.BlackJackBet)  end
+	if(HouseHand < ply.blackjackhand) then ply:PrintMessage( HUD_PRINTTALK,"You win, House hand is: "..HouseString) munmodhandleexp(ply,ply.BlackJackBet * 2) netsendhand(ply,("You win, House hand is: "..HouseString))
 		local CurrentMoney = sql.QueryValue("SELECT player_money FROM munmod_player_info WHERE player_id = '"..ply:SteamID().."'")
 		local HouseMoney = sql.QueryValue("SELECT player_money FROM munmod_player_info WHERE player_id = 'house'")
 		
 		local MunModRemovePlayerMoney = sql.Query("UPDATE munmod_player_info SET player_money = "..tostring((CurrentMoney + (ply.BlackJackBet * 2))).." WHERE player_id = '"..ply:SteamID().."'")
 		local MunModAddHousePlayerMoney = sql.Query("UPDATE munmod_player_info SET player_money = "..tostring((HouseMoney - (ply.BlackJackBet * 2))).." WHERE player_id = 'house'")
 		PrintMessage( HUD_PRINTTALK,ply:Nick().." Won "..(ply.BlackJackBet * 2).." Chips from the House!")
+		casinomodhandlewins(ply,"win")
+		casinomodhandlewinnings(ply,ply.BlackJackBet)
 	end 
-	if(HouseHand == ply.blackjackhand) then ply:PrintMessage( HUD_PRINTTALK,"Draw, House hand is: "..HouseHand) netsendhand(ply,("Draw, House hand is: "..HouseHand))
+	if(HouseHand == ply.blackjackhand) then ply:PrintMessage( HUD_PRINTTALK,"Draw, House hand is: "..HouseString) netsendhand(ply,("Draw, House hand is: "..HouseString))
 			munmodhandleexp(ply,ply.BlackJackBet)
 			local CurrentMoney = sql.QueryValue("SELECT player_money FROM munmod_player_info WHERE player_id = '"..ply:SteamID().."'")
 			local HouseMoney = sql.QueryValue("SELECT player_money FROM munmod_player_info WHERE player_id = 'house'")
@@ -471,7 +574,7 @@ function casinomodgive(ply,_,args)
 			local money2 = sql.QueryValue("SELECT player_money FROM munmod_player_info WHERE player_id = '"..ply:SteamID().."'")
 			if( tonumber(money2) < tonumber(args[3]) ) then return end
 			if(tonumber(args[3]) <= 0) then return end
-			
+			if(tonumber(args[3]) > (money2 / 5)) then PrintMessage(HUD_PRINTTALK,"You cannot give more than 20% of your funds!") return "" end
 			local MunPlayerName = args[2]
 			
 				local MunMoney = math.floor(args[3])
@@ -527,7 +630,6 @@ function casinomodshowexp(ply)
 	local NeededExp = sql.QueryValue("SELECT player_xp_needed FROM munmod_player_info WHERE player_id = '"..ply:SteamID().."'")
 	ply:PrintMessage( HUD_PRINTTALK,"Level: "..CurrentLevel.." | Curent Exp: "..CurrentExp.." / "..NeededExp)
 end
-
 
 hook.Add("PlayerSay", "casinomodmessages", casinomodmessages )
 concommand.Add("casinomodgui",casinomodgui)
