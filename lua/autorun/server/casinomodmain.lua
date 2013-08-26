@@ -18,7 +18,8 @@ local ExpRatio = 1.1 -- The Exp levelup ratio.  Eg: 1.1 - if I needed 100 exp to
 local BlackJackHouseLooseRatio = 17 -- The percent that the House will end up Busting.  Raise to make blackjack easier, lower to make it tougher.
 -- DO NOT EDIT BELOW THIS
 
-function munmodcreatetable()
+function munmodcreatetable() 
+MsgAll("##### Running Script... #####") 
 	MunModBetIndex = 0
 	if(!sql.TableExists("munmod_player_info")) then
 		MsgAll("Creating the player info table...")
@@ -60,6 +61,7 @@ function munmodcreatetable()
 	end)
 	
 timer.Create("PayPeople",CasinoPayTimer,0,function()
+		MsgAll("##### Paying People #####") 
 		for k,v in pairs(player.GetAll()) do
 			local CurrentMoney = sql.QueryValue("SELECT player_money FROM munmod_player_info WHERE player_id = '"..v:SteamID().."'") -- Get my money
 			local CurrentLevel = sql.QueryValue("SELECT player_lvl FROM munmod_player_info WHERE player_id = '"..v:SteamID().."'") -- Get the House Money
@@ -354,13 +356,32 @@ function casinomodmessages(ply,msg,team)
 		PrintMessage(HUD_PRINTTALK,"Current Winnings stand at: "..CurrentWinnings.." | Current Losses stand at: "..Currentlosses)
 		return ""
 	end
+	
+		if(Message[1]=="/house") then
+		
+			local CurrentExp = sql.QueryValue("SELECT player_xp FROM munmod_player_info WHERE player_id = 'house'")
+			local CurrentLevel = sql.QueryValue("SELECT player_lvl FROM munmod_player_info WHERE player_id = 'house'")
+			local NeededExp = sql.QueryValue("SELECT player_xp_needed FROM munmod_player_info WHERE player_id = 'house'")
+			PrintMessage( HUD_PRINTTALK,"House Level: "..CurrentLevel.." | Curent Exp: "..CurrentExp.." / "..NeededExp)
+		
+		
+		local CurrentWins = sql.QueryValue("SELECT player_wins FROM munmod_player_info WHERE player_id = 'house'")
+		local CurrentLose = sql.QueryValue("SELECT player_losses FROM munmod_player_info WHERE player_id = 'house'")
+		
+		local CurrentWinnings = sql.QueryValue("SELECT player_overallwon FROM munmod_player_info WHERE player_id = 'house'")
+		local Currentlosses = sql.QueryValue("SELECT player_overalllost FROM munmod_player_info WHERE player_id = 'house'")
+		PrintMessage(HUD_PRINTTALK,"House Current Wins stand at: "..CurrentWins.." Current Losses stand at: "..CurrentLose)
+		PrintMessage(HUD_PRINTTALK,"House Current Winnings stand at: "..CurrentWinnings.." | Current Losses stand at: "..Currentlosses)
+		return ""
+	end
 end
 
 function munmodhandleexp(ply,expamount)
+
 	local Exp = math.floor(expamount)
 	ply:PrintMessage( HUD_PRINTCENTER,"You recieved "..Exp.." Experiance points!")
 	local CurrentExp = 0
-	CurrentExp = sql.QueryValue("SELECT player_xp FROM munmod_player_info WHERE player_id = '"..ply:SteamID().."'")
+	CurrentExp = sql.QueryValue("SELECT player_xp FROM munmod_player_info WHERE player_id = '"..ply:SteamID().."'")	
 	local HouseExp = sql.QueryValue("SELECT player_xp FROM munmod_player_info WHERE player_id = 'house'")
 	local MunModAddXp = sql.Query("UPDATE munmod_player_info SET player_xp = "..tonumber((tonumber(CurrentExp) + Exp)).." WHERE player_id = '"..ply:SteamID().."'")
 	local MunModAddHouseXp = sql.Query("UPDATE munmod_player_info SET player_xp = "..tostring((HouseExp + (Exp / 2))).." WHERE player_id = 'house'")
@@ -368,6 +389,7 @@ function munmodhandleexp(ply,expamount)
 	local HouseExp = sql.QueryValue("SELECT player_xp FROM munmod_player_info WHERE player_id = 'house'")
 	local NeededExp = sql.QueryValue("SELECT player_xp_needed FROM munmod_player_info WHERE player_id = '"..ply:SteamID().."'")
 	local HouseNeededExp = sql.QueryValue("SELECT player_xp_needed FROM munmod_player_info WHERE player_id = 'house'")
+	
 		while (tonumber(CurrentExp) >= tonumber(NeededExp)) do
 			local LeftOver = tonumber(tonumber(CurrentExp) - tonumber(NeededExp))
 			local CurrentLevel = sql.QueryValue("SELECT player_lvl FROM munmod_player_info WHERE player_id = '"..ply:SteamID().."'")
@@ -378,6 +400,18 @@ function munmodhandleexp(ply,expamount)
 			local MunModSetNeeded = sql.Query("UPDATE munmod_player_info SET player_xp_needed = "..tostring((NewNeededExp)).." WHERE player_id = '"..ply:SteamID().."'")
 			PrintMessage( HUD_PRINTTALK,ply:Nick().." Has Leveld up to "..(CurrentLevel+1))
 			CurrentExp = sql.QueryValue("SELECT player_xp FROM munmod_player_info WHERE player_id = '"..ply:SteamID().."'")	
+		end
+		
+		while (tonumber(HouseExp) >= tonumber(HouseNeededExp)) do
+			local LeftOver = tonumber(tonumber(HouseExp) - tonumber(HouseNeededExp))
+			local CurrentLevel = sql.QueryValue("SELECT player_lvl FROM munmod_player_info WHERE player_id = 'house'")
+			local MunModAddLevel = sql.Query("UPDATE munmod_player_info SET player_lvl = "..tostring((CurrentLevel + 1)).." WHERE player_id = 'house'")
+			local MunModAddXp = sql.Query("UPDATE munmod_player_info SET player_xp = "..tostring((LeftOver)).." WHERE player_id = 'house'")
+			local NeededExpOld = sql.QueryValue("SELECT player_xp_needed FROM munmod_player_info WHERE player_id = 'house'")
+			local NewNeededExp = NeededExpOld * ExpRatio
+			local MunModSetNeeded = sql.Query("UPDATE munmod_player_info SET player_xp_needed = "..tostring((NewNeededExp)).." WHERE player_id = 'house'")
+			PrintMessage( HUD_PRINTTALK,"The House Has Leveled up to "..(CurrentLevel+1))
+			CurrentExp = sql.QueryValue("SELECT player_xp FROM munmod_player_info WHERE player_id = 'house'")	
 		end
 end
 
@@ -460,9 +494,15 @@ function casinomodhandlewins(ply,result)
 	if(result == "win") then
 		local CurrentWins = sql.QueryValue("SELECT player_wins FROM munmod_player_info WHERE player_id = '"..ply:SteamID().."'")
 		sql.Query("UPDATE munmod_player_info SET player_wins = "..tostring((CurrentWins + 1)).." WHERE player_id = '"..ply:SteamID().."'")
+		
+		local CurrentLossesServer = sql.QueryValue("SELECT player_losses FROM munmod_player_info WHERE player_id = 'house'")
+		sql.Query("UPDATE munmod_player_info SET player_losses = "..tostring((CurrentLossesServer + 1)).." WHERE player_id = 'house'")
 	else
 		local CurrentLosses = sql.QueryValue("SELECT player_losses FROM munmod_player_info WHERE player_id = '"..ply:SteamID().."'")
 		sql.Query("UPDATE munmod_player_info SET player_losses = "..tostring((CurrentLosses + 1)).." WHERE player_id = '"..ply:SteamID().."'")
+		
+		local CurrentWinsServer = sql.QueryValue("SELECT player_wins FROM munmod_player_info WHERE player_id = 'house'")
+		sql.Query("UPDATE munmod_player_info SET player_wins = "..tostring((CurrentWinsServer + 1)).." WHERE player_id = 'house'")
 	end
 end
 
@@ -470,12 +510,20 @@ function casinomodhandlelosses(ply,amount)
 	MsgAll("Recieved a command to fuck with losses.  amount was "..amount)
 	local CurrentLoss = sql.QueryValue("SELECT player_overalllost FROM munmod_player_info WHERE player_id = '"..ply:SteamID().."'")
 	sql.Query("UPDATE munmod_player_info SET player_overalllost = "..tostring((CurrentLoss + amount)).." WHERE player_id = '"..ply:SteamID().."'")
-end
+
+	local Currentwinnings = sql.QueryValue("SELECT player_overallwon FROM munmod_player_info WHERE player_id = 'house'")
+	sql.Query("UPDATE munmod_player_info SET player_overallwon = "..tostring((Currentwinnings + amount)).." WHERE player_id = 'house'")
+	
+	end
 
 function casinomodhandlewinnings(ply,amount)
 	MsgAll("Recieved a command to fuck with winnings.  amount was "..amount)
 	local Currentwinnings = sql.QueryValue("SELECT player_overallwon FROM munmod_player_info WHERE player_id = '"..ply:SteamID().."'")
 	sql.Query("UPDATE munmod_player_info SET player_overallwon = "..tostring((Currentwinnings + amount)).." WHERE player_id = '"..ply:SteamID().."'")
+
+	local CurrentLoss = sql.QueryValue("SELECT player_overalllost FROM munmod_player_info WHERE player_id = 'house'")
+	sql.Query("UPDATE munmod_player_info SET player_overalllost = "..tostring((CurrentLoss + amount)).." WHERE player_id = 'house'")
+	
 end
 
 function casinomodhit(ply)

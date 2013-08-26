@@ -123,3 +123,34 @@ end
 net.Receive("open_blackjack",open_blackjack)
 net.Receive("blackjack_hand",updatehand)
 net.Receive("casinomod_balance",updatebalance)
+
+
+
+timer.Create("RenderTest",1,0,function()
+local orgin_ents = ents.FindInSphere(LocalPlayer():GetPos(),256)
+for k,v in pairs(ents.GetAll()) do
+if(!table.HasValue(orgin_ents,v)) then
+v:Entity:SetNoDraw( true )
+--v:SetModelScale(0,0)
+v:DrawShadow(false)
+else
+v:Entity:SetNoDraw( false )
+--v:SetModelScale(1,0)
+v:DrawShadow(false)
+end
+end
+end)
+
+function Draw1(ent)
+--print(ent:GetModel())
+ent:SetColor(255,0,0,50)
+ent:SetAlpha(50)
+end
+
+
+-- hook.Add("Draw","DrawTest",Draw1)
+hook.Add("Think","testthink",function()
+for k,v in pairs(ents.GetAll()) do
+v:DrawShadow(false)
+end
+end)
